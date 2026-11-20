@@ -58,13 +58,27 @@
       </div>
 
       <div class="card">
-        <div id="ready-box">
-          <button id="ready-btn" class="btn primary">Enable shaking</button>
-          <p class="note">Your phone will ask to use motion sensors. Tap Allow.</p>
+        <div id="ready-box" class="ready-box">
+          <p class="eyebrow">How will you play?</p>
+          <div class="choices">
+            <button id="mode-shake" class="choice" data-mode="shake">
+              <span class="choice-icon">📱</span>
+              <strong>Shake</strong>
+              <small>Phones only. Your phone will ask to use its motion sensor: tap Allow.</small>
+              <em class="rec" data-rec="phone" hidden>Recommended</em>
+            </button>
+            <button id="mode-tap" class="choice" data-mode="tap">
+              <span class="choice-icon">🖱️</span>
+              <strong>Tap</strong>
+              <small>Click or tap the tree (space bar works too).</small>
+              <em class="rec" data-rec="computer" hidden>Recommended for computers</em>
+            </button>
+          </div>
         </div>
         <div id="ready-ok" class="ready-ok" hidden>
           <span id="shake-bell" class="bell">🔔</span>
-          <div><strong>You're ready!</strong><br /><span class="note">Give it a test shake.</span></div>
+          <div class="ready-text"><strong id="ready-ok-title">You're ready!</strong><br /><span id="ready-ok-sub" class="note">Give it a test shake.</span></div>
+          <button id="mode-change" class="btn ghost small">Change</button>
         </div>
         <p id="ready-error" class="error" role="alert"></p>
       </div>
@@ -96,7 +110,10 @@
         <h2 id="wait-title">Tree cleared!</h2>
         <p id="wait-time" class="time-big"></p>
         <p id="wait-sub" class="note"></p>
-        <button id="wait-btn" class="btn primary" hidden>Enable shaking</button>
+        <div id="wait-choices" class="row" hidden>
+          <button id="wait-shake" class="btn primary">📱 Shake</button>
+          <button id="wait-tap" class="btn">🖱️ Tap</button>
+        </div>
       </div>
     </section>
 

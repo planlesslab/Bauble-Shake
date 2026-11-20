@@ -242,6 +242,25 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(52, 196, 11
 .qr img, .qr svg { width: 168px; height: 168px; image-rendering: pixelated; }
 
 .ready-ok { display: flex; align-items: center; gap: 14px; }
+.ready-ok .ready-text { flex: 1; }
+.ready-box { display: flex; flex-direction: column; gap: 10px; }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.choice {
+  font: inherit; color: var(--text); text-align: center; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 16px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  transition: transform 0.08s ease, border-color 0.2s;
+}
+.choice:active { transform: scale(0.97); }
+.choice.recommended { border-color: var(--green); box-shadow: 0 0 0 2px rgba(52, 196, 114, 0.35), 0 6px 24px rgba(52, 196, 114, 0.25); }
+.choice-icon { font-size: 34px; }
+.choice strong { font-size: 18px; }
+.choice small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.choice .rec { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); }
+#wait-choices { justify-content: center; }
 .bell { font-size: 36px; display: inline-block; transition: transform 0.1s; }
 .bell.ring { animation: ring 0.35s ease; }
 @keyframes ring {
