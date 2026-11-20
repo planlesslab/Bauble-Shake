@@ -118,9 +118,24 @@ window.addEventListener("keydown", (e) => {
   if (tapMode && e.code === "Space") { e.preventDefault(); if (!e.repeat) tapShake(); }
 });
 
-/** Player picked how to play: "shake" (motion sensor) or "tap" (click/tap). */
-async function chooseMode(mode) {
-  $("ready-error").textContent = "";
+// Default guess: Shake on phones, Tap on computers. Remembered once changed.
+let selectedMode = localStorage.getItem("bauble-shake-mode") || (looksLikePhone() ? "shake" : "tap");
+
+function selectMode(mode) {
+  selectedMode = mode;
+  localStorage.setItem("bauble-shake-mode", mode);
+  for (const [id, m] of [["home-shake", "shake"], ["home-tap", "tap"]]) {
+    $(id).classList.toggle("selected", m === mode);
+    $(id).setAttribute("aria-pressed", String(m === mode));
+  }
+}
+
+/**
+ * Switch on the chosen mode. Must be called straight from a button press:
+ * iPhones only allow motion access in response to a tap.
+ * Returns an error message, or "" on success.
+ */
+async function activateMode(mode) {
   unlockAudio();
   if (mode === "shake") {
     const perm = await detector.requestPermission();
@@ -130,12 +145,9 @@ async function chooseMode(mode) {
       ok = await detector.waitForSensor(1500);
     }
     if (!ok) {
-      $("ready-error").textContent =
-        perm === "denied"
-          ? "Motion access was blocked. Choose Tap, or reload the page and tap Allow when asked."
-          : "No motion sensor found on this device. Choose Tap instead.";
-      if (document.body.dataset.view === "wait") $("wait-sub").textContent = $("ready-error").textContent;
-      return;
+      return perm === "denied"
+        ? "Motion access was blocked, so we've switched you to Tap. (To shake, reload and tap Allow.)"
+        : "No motion sensor found on this device, so we've switched you to Tap.";
     }
     tapMode = false;
   } else {
@@ -143,8 +155,31 @@ async function chooseMode(mode) {
     tapMode = true;
   }
   motionReady = true;
+  selectMode(mode);
+  return "";
+}
+
+/** Changing mode from the lobby (or the in-game fallback). */
+async function chooseMode(mode) {
+  $("ready-error").textContent = "";
+  const err = await activateMode(mode);
+  if (err) {
+    $("ready-error").textContent = err.replace(", so we've switched you to Tap", ". Choose Tap instead");
+    if (document.body.dataset.view === "wait") $("wait-sub").textContent = $("ready-error").textContent;
+    return;
+  }
   await backend.update(roomPath(`players/${backend.uid}`), { ready: true, tap: tapMode || null });
   render();
+}
+
+/** Used on the first page: activate the selected mode, falling back to Tap. */
+async function activateSelectedMode() {
+  const err = await activateMode(selectedMode);
+  if (err) {
+    await activateMode("tap");
+    homeError(err);
+    $("ready-error").textContent = err; // still visible once they're in the lobby
+  }
 }
 
 async function changeMode() {
@@ -169,6 +204,7 @@ async function createRoom() {
   const name = readName();
   if (!name) return;
   setBusy(true);
+  await activateSelectedMode();
   try {
     for (let i = 0; i < 8; i++) {
       const c = randomCode();
@@ -177,7 +213,7 @@ async function createRoom() {
         status: "lobby",
         round: 0,
         createdAt: backend.serverNow(),
-        players: { [backend.uid]: playerRecord(name) },
+        players: { [backend.uid]: { ...playerRecord(name), ready: true, ...(tapMode ? { tap: true } : {}) } },
       });
       if (ok) return enterRoom(c);
     }
@@ -196,6 +232,7 @@ async function joinRoom(c) {
   c = cleanCode(c);
   if (c.length !== 4) return homeError("Room codes are 4 letters.");
   setBusy(true);
+  await activateSelectedMode();
   try {
     const host = await backend.get(`rooms/${c}/hostId`);
     if (!host) {
@@ -203,9 +240,10 @@ async function joinRoom(c) {
       return homeError(`Room ${c} doesn't exist any more. Create a new one, or check the code.`);
     }
     const existing = await backend.get(`rooms/${c}/players/${backend.uid}`);
+    const mode = { ready: true, tap: tapMode || null };
     await backend.update(`rooms/${c}/players/${backend.uid}`, existing
-      ? { name, online: true, ready: false }
-      : playerRecord(name));
+      ? { name, online: true, ...mode }
+      : { ...playerRecord(name), ...mode });
     enterRoom(c);
   } catch (err) {
     console.error(err);
@@ -217,7 +255,6 @@ async function joinRoom(c) {
 
 function enterRoom(c) {
   code = c;
-  motionReady = false;
   history.replaceState(null, "", `?room=${c}${backend.kind === "local" ? "&local" : ""}`);
   backend.onDisconnectSet(roomPath(`players/${backend.uid}/online`), false);
   unwatch?.();
@@ -605,6 +642,9 @@ $("name-input").addEventListener("keydown", (e) => {
 });
 $("code-input").addEventListener("input", (e) => { e.target.value = cleanCode(e.target.value); });
 $("code-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("join-btn").click(); });
+$("home-shake").addEventListener("click", () => selectMode("shake"));
+$("home-tap").addEventListener("click", () => selectMode("tap"));
+selectMode(selectedMode);
 $("mode-shake").addEventListener("click", () => chooseMode("shake"));
 $("mode-tap").addEventListener("click", () => chooseMode("tap"));
 $("wait-shake").addEventListener("click", () => chooseMode("shake"));
@@ -668,7 +708,6 @@ async function boot() {
   }
   setBusy(false);
 
-  if (roomParam && $("name-input").value.trim()) joinRoom(roomParam);
 }
 
 boot();

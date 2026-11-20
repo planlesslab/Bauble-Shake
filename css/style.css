@@ -261,6 +261,13 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(52, 196, 11
 .choice small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
 .choice .rec { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); }
 #wait-choices { justify-content: center; }
+.choices.compact .choice { padding: 12px 8px; gap: 3px; }
+.choices.compact .choice-icon { font-size: 26px; }
+.choice.selected {
+  border-color: var(--green);
+  background: rgba(52, 196, 114, 0.16);
+  box-shadow: 0 0 0 2px rgba(52, 196, 114, 0.45), 0 6px 24px rgba(52, 196, 114, 0.25);
+}
 .bell { font-size: 36px; display: inline-block; transition: transform 0.1s; }
 .bell.ring { animation: ring 0.35s ease; }
 @keyframes ring {

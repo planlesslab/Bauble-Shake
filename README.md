@@ -47,7 +47,7 @@ Then on GitHub, go to **Settings → Pages → Build and deployment**. Choose **
 ## How to play
 
 1. The host taps **Create a room** and shares the code, link or QR code.
-2. Everyone chooses **📱 Shake** (phones) or **🖱️ Tap** (computers). Shakers give a test shake, and the 🔔 rings when one is detected.
+2. On the first page, everyone enters a name and picks **📱 Shake** or **🖱️ Tap**. The best choice is pre-selected: Shake on phones, Tap on computers. On iPhone, pressing Join brings up the "Allow motion" prompt. Players can switch with **Change** in the lobby.
 3. The host taps **Start game**. After 3‑2‑1, shake!
 4. Each sharp shake (or tap/click) knocks off one decoration, and a really hard shake knocks off two. Clear all 40 to finish.
 5. The podium appears when everyone is done or time runs out. The host can start another round with **Play again**.
@@ -61,7 +61,7 @@ Then on GitHub, go to **Settings → Pages → Build and deployment**. Choose **
 | 3D scene: tree shape, colours, gifts, swirls, glow | `js/tree3d.js` (add `?flat` to the URL to force the flat tree) |
 | Colours and scenery | `css/style.css` |
 
-In the lobby, each player chooses **📱 Shake** (phones, using the motion sensor) or **🖱️ Tap** (click or tap the tree, or press space; recommended on computers). Tapping is capped at about 6–7 decorations a second (`TAP_COOLDOWN_MS` in `js/main.js`) so it's no faster than good shaking. The lobby and podium show which way each player played.
+On the first page, each player chooses **📱 Shake** (phones, using the motion sensor) or **🖱️ Tap** (click or tap the tree, or press space; recommended on computers). Tapping is capped at about 6–7 decorations a second (`TAP_COOLDOWN_MS` in `js/main.js`) so it's no faster than good shaking. The lobby and podium show which way each player played.
 
 ## Project layout
 

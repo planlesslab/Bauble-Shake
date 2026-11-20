@@ -31,11 +31,20 @@
       <p class="tagline">Shake your phone. Clear your tree. Beat your friends.</p>
       <div class="card">
         <div id="invite-head" class="invite-head" hidden>
-          <p class="eyebrow">You're invited to room</p>
+          <p class="eyebrow">Join room</p>
           <div id="invite-code" class="room-code small"></div>
         </div>
         <label for="name-input">Your name</label>
         <input id="name-input" maxlength="16" autocomplete="nickname" placeholder="e.g. Rudolph" />
+        <label>How will you play?</label>
+        <div class="choices compact">
+          <button type="button" id="home-shake" class="choice" aria-pressed="false">
+            <span class="choice-icon">📱</span><strong>Shake</strong><small>Shake your phone</small>
+          </button>
+          <button type="button" id="home-tap" class="choice" aria-pressed="false">
+            <span class="choice-icon">🖱️</span><strong>Tap</strong><small>Click or tap the tree</small>
+          </button>
+        </div>
         <button id="invite-join-btn" class="btn primary" hidden>Join the game</button>
         <button id="create-btn" class="btn primary">Create a room</button>
         <div id="join-divider" class="divider"><span>or join one</span></div>
