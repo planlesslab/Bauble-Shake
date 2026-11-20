@@ -58,7 +58,7 @@ Then on GitHub, go to **Settings → Pages → Build and deployment**. Choose **
 |---|---|
 | Decorations per tree, time limit, countdown | top of `js/main.js` (`ORNAMENTS`, `TIME_LIMIT_MS`, `COUNTDOWN_MS`) |
 | Shake sensitivity | `SHAKE` in `js/shake.js` (`threshold`, `strong`, `cooldownMs`) |
-| Tree look and decoration layout | `js/tree.js` |
+| 3D scene: tree shape, colours, gifts, swirls, glow | `js/tree3d.js` (add `?flat` to the URL to force the flat tree) |
 | Colours and scenery | `css/style.css` |
 
 Add `?tap` to the URL to allow tap mode on a laptop when testing with real Firebase. Players using tap mode are marked 👆 in the lobby and on the podium.
@@ -69,7 +69,8 @@ Add `?tap` to the URL to allow tap mode on a laptop when testing with real Fireb
 index.html               screens (home, lobby, game, waiting, results)
 css/style.css            glass/neon styling and scenery
 js/main.js               game flow, rooms, rendering
-js/tree.js               SVG glass tree + flying-ornament physics
+js/tree3d.js             3D glass tree scene (WebGL2, no libraries): glass, glow, swirls, reflections
+js/tree.js               flat SVG tree, used automatically if a phone can't do 3D
 js/shake.js              accelerometer shake detection (incl. iOS permission)
 js/backend-firebase.js   Firebase Realtime Database adapter
 js/backend-local.js      same API over localStorage for local demo mode

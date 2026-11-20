@@ -30,11 +30,16 @@
       <h1 class="logo">Bauble<br /><span>Shake</span></h1>
       <p class="tagline">Shake your phone. Clear your tree. Beat your friends.</p>
       <div class="card">
+        <div id="invite-head" class="invite-head" hidden>
+          <p class="eyebrow">You're invited to room</p>
+          <div id="invite-code" class="room-code small"></div>
+        </div>
         <label for="name-input">Your name</label>
         <input id="name-input" maxlength="16" autocomplete="nickname" placeholder="e.g. Rudolph" />
+        <button id="invite-join-btn" class="btn primary" hidden>Join the game</button>
         <button id="create-btn" class="btn primary">Create a room</button>
-        <div class="divider"><span>or join one</span></div>
-        <div class="row">
+        <div id="join-divider" class="divider"><span>or join one</span></div>
+        <div id="join-row" class="row">
           <input id="code-input" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" spellcheck="false" />
           <button id="join-btn" class="btn">Join</button>
         </div>
