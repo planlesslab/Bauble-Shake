@@ -32,14 +32,16 @@ let code = null;            // current room code
 let room = null;            // latest room snapshot
 let unwatch = null;
 let motionReady = false;    // this device has granted motion access
-let tapMode = false;        // tap-to-shake fallback (local demo or ?tap)
+let tapMode = false;        // player chose Tap instead of Shake
 let game = null;            // { round, tree, removed, finished, lastSent }
 let hostOfflineSince = 0;
 let wakeLock = null;
 let qrFor = null;
 let celebratedRound = null;
 
-const tapAllowed = () => backend?.kind === "local" || params.has("tap");
+const TAP_COOLDOWN_MS = 150; // keeps tapping roughly as fast as a good shaker, no faster
+let lastTap = 0;
+const looksLikePhone = () => matchMedia("(pointer: coarse)").matches && "DeviceMotionEvent" in window;
 const me = () => room?.players?.[backend.uid];
 const isHost = () => room?.hostId === backend.uid;
 const isParticipant = () => !!room?.participants?.[backend.uid];
@@ -104,36 +106,50 @@ function onShake(power, dir) {
   }
 }
 
-// Tap fallback for laptops / testing.
-$("view-game").addEventListener("pointerdown", () => {
-  if (tapMode) onShake(1, Math.random() < 0.5 ? -1 : 1);
-});
+// Tap mode: click/tap anywhere on the game screen, or press space.
+function tapShake() {
+  const t = performance.now();
+  if (t - lastTap < TAP_COOLDOWN_MS) return;
+  lastTap = t;
+  onShake(1, Math.random() < 0.5 ? -1 : 1);
+}
+$("view-game").addEventListener("pointerdown", () => { if (tapMode) tapShake(); });
 window.addEventListener("keydown", (e) => {
-  if (tapMode && e.code === "Space") { e.preventDefault(); onShake(1, Math.random() < 0.5 ? -1 : 1); }
+  if (tapMode && e.code === "Space") { e.preventDefault(); if (!e.repeat) tapShake(); }
 });
 
-async function enableShaking() {
+/** Player picked how to play: "shake" (motion sensor) or "tap" (click/tap). */
+async function chooseMode(mode) {
   $("ready-error").textContent = "";
   unlockAudio();
-  const perm = await detector.requestPermission();
-  let ok = false;
-  if (perm === "granted") {
-    detector.start();
-    ok = await detector.waitForSensor(1500);
-  }
-  if (!ok && tapAllowed()) {
+  if (mode === "shake") {
+    const perm = await detector.requestPermission();
+    let ok = false;
+    if (perm === "granted") {
+      detector.start();
+      ok = await detector.waitForSensor(1500);
+    }
+    if (!ok) {
+      $("ready-error").textContent =
+        perm === "denied"
+          ? "Motion access was blocked. Choose Tap, or reload the page and tap Allow when asked."
+          : "No motion sensor found on this device. Choose Tap instead.";
+      if (document.body.dataset.view === "wait") $("wait-sub").textContent = $("ready-error").textContent;
+      return;
+    }
+    tapMode = false;
+  } else {
+    detector.stop();
     tapMode = true;
-    ok = true;
-  }
-  if (!ok) {
-    $("ready-error").textContent =
-      perm === "denied"
-        ? "Motion access was blocked. Reload the page and tap Allow when asked."
-        : "Couldn't read your phone's motion sensor. Open this page on a phone (over https).";
-    return;
   }
   motionReady = true;
   await backend.update(roomPath(`players/${backend.uid}`), { ready: true, tap: tapMode || null });
+  render();
+}
+
+async function changeMode() {
+  motionReady = false;
+  await backend.update(roomPath(`players/${backend.uid}`), { ready: false });
   render();
 }
 
@@ -202,7 +218,7 @@ async function joinRoom(c) {
 function enterRoom(c) {
   code = c;
   motionReady = false;
-  history.replaceState(null, "", `?room=${c}${backend.kind === "local" ? "&local" : ""}${params.has("tap") ? "&tap" : ""}`);
+  history.replaceState(null, "", `?room=${c}${backend.kind === "local" ? "&local" : ""}`);
   backend.onDisconnectSet(roomPath(`players/${backend.uid}/online`), false);
   unwatch?.();
   unwatch = backend.watch(roomPath(), (r) => { room = r; render(); });
@@ -272,6 +288,7 @@ function ensureGame() {
   };
   $("hud-left").textContent = tree.remaining;
   $("shake-hint").hidden = false;
+  $("shake-hint").textContent = tapMode ? "TAP!" : "SHAKE!";
   if (!tapMode) detector.start();
   keepAwake(true);
 }
@@ -311,9 +328,11 @@ function render() {
   ensureGame();
   const now = backend.serverNow();
   if (!motionReady && !game.finished && now < room.endsAt) {
-    // Page was reloaded mid-round: motion access has to be granted again.
-    showWait("📱", "Turn on shaking!", "", "The game is starting. Tap below so your phone can feel the shakes.");
-    $("wait-btn").hidden = false;
+    // Didn't pick Shake or Tap before the start (or reloaded mid-round).
+    showWait("🎄", "How will you play?", "", "Quick, the game is starting! Shake needs a phone; Tap works anywhere.");
+    $("wait-choices").hidden = false;
+    $("wait-shake").classList.toggle("primary", looksLikePhone());
+    $("wait-tap").classList.toggle("primary", !looksLikePhone());
     return;
   }
   if (game.finished) {
@@ -324,12 +343,13 @@ function render() {
     const pct = Math.round((game.removed / ORNAMENTS) * 100);
     showWait("⏰", "Time's up!", "", `You cleared ${pct}% of your tree.`);
   } else {
+    $("shake-hint").textContent = tapMode ? "TAP!" : "SHAKE!";
     show("game");
   }
 }
 
 function showWait(emoji, title, time, sub) {
-  $("wait-btn").hidden = true;
+  $("wait-choices").hidden = true;
   $("wait-emoji").textContent = emoji;
   $("wait-title").textContent = title;
   $("wait-time").textContent = time;
@@ -344,6 +364,15 @@ function renderLobby() {
 
   $("ready-box").hidden = motionReady;
   $("ready-ok").hidden = !motionReady;
+  const phone = looksLikePhone();
+  $("mode-shake").classList.toggle("recommended", phone);
+  $("mode-tap").classList.toggle("recommended", !phone);
+  document.querySelector('[data-rec="phone"]').hidden = !phone;
+  document.querySelector('[data-rec="computer"]').hidden = phone;
+  $("shake-bell").textContent = tapMode ? "🖱️" : "🔔";
+  $("ready-ok-sub").textContent = tapMode
+    ? "You'll click or tap the tree. Give it a test click here."
+    : "Give it a test shake: the bell rings.";
 
   const players = Object.entries(room.players || {})
     .filter(([, p]) => p.online)
@@ -358,7 +387,7 @@ function renderLobby() {
     if (id === backend.uid) { name.classList.add("me"); name.textContent += " (you)"; }
     const tag = document.createElement("span");
     tag.className = "tag" + (p.ready ? " ok" : "");
-    tag.textContent = p.ready ? (p.tap ? "ready · tap mode" : "ready ✓") : "not ready";
+    tag.textContent = p.ready ? (p.tap ? "ready · 🖱️ tap" : "ready · 📱 shake") : "choosing…";
     li.append(name, tag);
     list.appendChild(li);
   }
@@ -427,7 +456,7 @@ function renderResults() {
       who.textContent = r.name + (r.id === backend.uid ? " (you)" : "");
       const t = document.createElement("div");
       t.className = "t";
-      t.textContent = fmt(r.finishMs) + (r.tap ? " 👆" : "");
+      t.textContent = fmt(r.finishMs) + (r.tap ? " 🖱️" : " 📱");
       step.append(crown, who, t);
     }
     const block = document.createElement("div");
@@ -576,8 +605,15 @@ $("name-input").addEventListener("keydown", (e) => {
 });
 $("code-input").addEventListener("input", (e) => { e.target.value = cleanCode(e.target.value); });
 $("code-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("join-btn").click(); });
-$("ready-btn").addEventListener("click", enableShaking);
-$("wait-btn").addEventListener("click", enableShaking);
+$("mode-shake").addEventListener("click", () => chooseMode("shake"));
+$("mode-tap").addEventListener("click", () => chooseMode("tap"));
+$("wait-shake").addEventListener("click", () => chooseMode("shake"));
+$("wait-tap").addEventListener("click", () => chooseMode("tap"));
+$("mode-change").addEventListener("click", changeMode);
+$("ready-ok").addEventListener("pointerdown", (e) => {
+  // test click in tap mode rings the bell
+  if (tapMode && e.target.id !== "mode-change") onShake(1, 1);
+});
 $("start-btn").addEventListener("click", startGame);
 $("again-btn").addEventListener("click", playAgain);
 $("leave-btn").addEventListener("click", leaveRoom);
