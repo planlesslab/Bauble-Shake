@@ -1,5 +1,5 @@
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyDAR0EX78cihfKKYasNnS_Cvj3Zhk5BQ3w",
   authDomain: "bauble-shake.firebaseapp.com",
   databaseURL: "https://bauble-shake-default-rtdb.europe-west1.firebasedatabase.app",
