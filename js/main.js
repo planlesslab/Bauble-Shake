@@ -1,13 +1,14 @@
 import { firebaseConfig } from "./firebase-config.js";
 import { createLocalBackend } from "./backend-local.js";
 import { Tree } from "./tree.js";
+import { Tree3D, supportsWebGL2 } from "./tree3d.js";
 import { ShakeDetector } from "./shake.js";
 
 // ---------- Game settings ----------
 const ORNAMENTS = 40;          // decorations per tree (the star is the last one)
 const COUNTDOWN_MS = 3800;     // 3, 2, 1, go
 const TIME_LIMIT_MS = 90_000;  // round ends for everyone after this
-const HOST_GRACE_MS = 4000;    // how long the host can be offline before someone else takes over
+const HOST_GRACE_MS = 60_000;  // how long the host can be away before someone else takes over
 
 // ---------- Helpers ----------
 const $ = (id) => document.getElementById(id);
@@ -181,7 +182,10 @@ async function joinRoom(c) {
   setBusy(true);
   try {
     const host = await backend.get(`rooms/${c}/hostId`);
-    if (!host) return homeError(`No room called ${c}. Check the code.`);
+    if (!host) {
+      setInviteMode(null); // let them create their own room instead
+      return homeError(`Room ${c} doesn't exist any more. Create a new one, or check the code.`);
+    }
     const existing = await backend.get(`rooms/${c}/players/${backend.uid}`);
     await backend.update(`rooms/${c}/players/${backend.uid}`, existing
       ? { name, online: true, ready: false }
@@ -215,12 +219,13 @@ async function leaveRoom() {
   room = null;
   endGame();
   history.replaceState(null, "", location.pathname + (backend.kind === "local" && params.has("local") ? "?local" : ""));
+  setInviteMode(null);
   show("home");
 }
 
 async function startGame() {
   if (!isHost()) return;
-  const ready = Object.entries(room.players || {}).filter(([, p]) => p.online && p.ready);
+  const ready = Object.entries(room.players || {}).filter(([, p]) => p.online);
   if (!ready.length) return;
   const startAt = backend.serverNow() + COUNTDOWN_MS;
   const updates = {
@@ -247,7 +252,14 @@ async function playAgain() {
 function ensureGame() {
   if (game && game.round === room.round) return;
   endGame();
-  const tree = new Tree($("tree-stage"), { count: ORNAMENTS, seed: room.seed || 1 });
+  const opts = { count: ORNAMENTS, seed: room.seed || 1 };
+  let tree;
+  try {
+    tree = supportsWebGL2() && !params.has("flat") ? new Tree3D($("tree-stage"), opts) : new Tree($("tree-stage"), opts);
+  } catch (err) {
+    console.warn("3D tree unavailable, using flat tree", err);
+    tree = new Tree($("tree-stage"), opts);
+  }
   const already = me()?.progress || 0; // resuming after a reload
   tree.removeInstantly(already);
   game = {
@@ -300,7 +312,7 @@ function render() {
   const now = backend.serverNow();
   if (!motionReady && !game.finished && now < room.endsAt) {
     // Page was reloaded mid-round: motion access has to be granted again.
-    showWait("📱", "Back in the game", "", "Tap below to switch shaking back on.");
+    showWait("📱", "Turn on shaking!", "", "The game is starting. Tap below so your phone can feel the shakes.");
     $("wait-btn").hidden = false;
     return;
   }
@@ -351,11 +363,13 @@ function renderLobby() {
     list.appendChild(li);
   }
 
-  const readyCount = players.filter(([, p]) => p.ready).length;
   $("start-btn").hidden = !isHost();
-  $("start-btn").disabled = readyCount === 0;
-  $("start-btn").textContent = readyCount ? `Start game (${readyCount} ready)` : "Waiting for players to get ready";
-  $("lobby-wait").hidden = isHost();
+  $("start-btn").disabled = players.length === 0;
+  $("start-btn").textContent = `Start game · ${players.length} player${players.length === 1 ? "" : "s"}`;
+  $("lobby-wait").hidden = false;
+  $("lobby-wait").textContent = isHost()
+    ? "Tap Start once everyone has joined."
+    : "Waiting for the host to start…";
 }
 
 function renderQr() {
@@ -540,10 +554,26 @@ function readName() {
   return name;
 }
 function homeError(msg) { $("home-error").textContent = msg; }
+
+/** Opened from an invite link: only show name + join. */
+function setInviteMode(c) {
+  const on = !!c;
+  $("invite-head").hidden = !on;
+  $("invite-code").textContent = c || "";
+  $("invite-join-btn").hidden = !on;
+  $("create-btn").hidden = on;
+  $("join-divider").hidden = on;
+  $("join-row").hidden = on;
+  document.querySelector(".tagline").hidden = on;
+}
 function setBusy(b) { $("create-btn").disabled = b; $("join-btn").disabled = b; }
 
 $("create-btn").addEventListener("click", () => { homeError(""); createRoom(); });
 $("join-btn").addEventListener("click", () => { homeError(""); joinRoom($("code-input").value); });
+$("invite-join-btn").addEventListener("click", () => { homeError(""); joinRoom($("invite-code").textContent); });
+$("name-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !$("invite-join-btn").hidden) $("invite-join-btn").click();
+});
 $("code-input").addEventListener("input", (e) => { e.target.value = cleanCode(e.target.value); });
 $("code-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("join-btn").click(); });
 $("ready-btn").addEventListener("click", enableShaking);
@@ -573,7 +603,7 @@ async function boot() {
   show("home");
   $("name-input").value = localStorage.getItem("bauble-shake-name") || "";
   const roomParam = cleanCode(params.get("room"));
-  if (roomParam) $("code-input").value = roomParam;
+  if (roomParam) { $("code-input").value = roomParam; setInviteMode(roomParam); }
 
   const configured = firebaseConfig?.apiKey && !firebaseConfig.apiKey.startsWith("YOUR");
   const banner = $("mode-banner");
