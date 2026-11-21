@@ -22,8 +22,10 @@ const cleanCode = (s) => (s || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0,
 const inviteUrl = (code) => `${location.origin}${location.pathname}?room=${code}${backend?.kind === "local" ? "&local" : ""}`;
 
 function show(view) {
+  const changed = document.body.dataset.view !== view;
   for (const v of VIEWS) $(`view-${v}`).hidden = v !== view;
   document.body.dataset.view = view;
+  if (changed && view !== "home") window.scrollTo(0, 0);
 }
 
 // ---------- State ----------
@@ -624,6 +626,7 @@ function homeError(msg) { $("home-error").textContent = msg; }
 /** Opened from an invite link: only show name + join. */
 function setInviteMode(c) {
   const on = !!c;
+  document.body.classList.toggle("invite", on);
   $("invite-head").hidden = !on;
   $("invite-code").textContent = c || "";
   $("invite-join-btn").hidden = !on;

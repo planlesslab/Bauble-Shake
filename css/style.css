@@ -408,3 +408,20 @@ h2 { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   .gift, .bokeh, .swirl-a, .swirl-b, .shake-hint, .star-glow { animation: none; }
 }
+
+/* ---------- Planless Lab page header, fitted around the game ---------- */
+/* Keep the header and footer above the fixed scenery. */
+.pl-nav { z-index: 30; }
+.pl-head, .pl-foot { position: relative; z-index: 2; }
+.pl-icon img { border-radius: 22px; object-fit: cover; }
+/* The header and footer belong to the first page. Once you're in a room they get out of the way,
+   and during play the screen is all game. */
+body:not([data-view="home"]) .pl-head,
+body:not([data-view="home"]) .pl-foot,
+body.invite .pl-head { display: none; }
+body[data-view="game"] .pl-nav { display: none; }
+/* The header already shows the name, so hide the game's own big logo there. */
+body[data-view="home"]:not(.invite) #view-home .logo,
+body[data-view="home"]:not(.invite) #view-home .tagline { display: none; }
+/* The nav is slightly see-through by design; over this game's dark scenery that turns it grey, so make it solid here. */
+body .pl-nav { background: #eef0ff; }
